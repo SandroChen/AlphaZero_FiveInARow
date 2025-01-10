@@ -5,7 +5,8 @@ import pygame
 import torch
 import argparse
 
-from mcts import Node, BoardState, mcts
+from mcts import Node, mcts
+from game import Gomoku
 from models import ResNet
 
 
@@ -26,8 +27,8 @@ def update_by_ai(node, pure_network: bool = False, model: ResNet = None, device=
     # 可复用的节点，而非每次重建
     if pure_network and model is not None:
         model.to(device)
-        board = node.board_state.board
-        out = model.infer(torch.tensor(board, dtype=torch.float32).reshape(1, 1, len(board), len(board[0])))
+        board = node.game.board
+        out = model.predict_move(board)
         n_row = out // len(board)
         n_col = out % len(board)
         move = (n_row, n_col)
@@ -61,7 +62,7 @@ def main():
     parser.add_argument('-n', '--number', type=int, default=3, help='winning condition. e.g.n=5 means five in a row')
     parser.add_argument('-p', '--player', type=int, default=1, help='human player.1 means black, -1 means white')
     parser.add_argument('-m', '--method', type=int, default=0, help='0:pure mcts;1:pure network')
-    parser.add_argument('-c', '--ckpt', default='', help='checkpoint of pretrained model')
+    parser.add_argument('-c', '--ckpt', default='ckpts/33_iter100/MovePredictor_4999.pth', help='checkpoint of pretrained model')
     parser.add_argument('-d', '--device', default='cpu', help='device to run pretrained model')
 
     # board parameters
@@ -93,7 +94,7 @@ def main():
     draw_board(screen, M)
     pygame.display.update()
 
-    root = Node(white, None, BoardState(np.zeros((M, M)), current_player=white, win_condition=win_condition))
+    root = Node(white, None, Gomoku(np.zeros((M, M)), current_player=white, win_condition=win_condition))
     if ai_player == 1:
         pc_step += 1
         root = update_by_ai(root, pure_network=pure_network, model=prior_network)
@@ -102,17 +103,17 @@ def main():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 exit()
-            update_board(screen, root.board_state.board)
+            update_board(screen, root.game.board)
             if event.type == pygame.MOUSEBUTTONDOWN:
                 (x, y) = event.pos
                 col = round((x - 25) / 50)
                 row = round((y - 25) / 50)
-                if root.board_state.board[row][col] != 0:
+                if root.game.board[row][col] != 0:
                     continue
                 move = (row, col)
                 root = root.select_with_move(move)
-                update_board(screen, root.board_state.board)
-                done = root.board_state.is_terminal()
+                update_board(screen, root.game.board)
+                done = root.game.is_terminal()
                 if done:
                     break
                 else:
@@ -120,14 +121,14 @@ def main():
                     root = update_by_ai(root, pure_network=pure_network, model=prior_network)
 
 
-        if root.board_state.is_terminal():
+        if root.game.is_terminal():
             myfont = pygame.font.Font(None, 40)
             text = ""
-            if root.board_state.is_terminal() == human_player:
+            if root.game.is_terminal() == human_player:
                 text = "Human player wins!"
-            elif root.board_state.is_terminal() == ai_player:
+            elif root.game.is_terminal() == ai_player:
                 text = "Computer player wins!"
-            elif root.board_state.is_terminal() == 2:
+            elif root.game.is_terminal() == 2:
                 text = "Nobody wins!"
             textImage = myfont.render(text, True, (255, 255, 255))
             screen.blit(textImage, (int(M*50/2)-len(text)*M, int(M*50/2)-20))

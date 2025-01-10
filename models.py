@@ -69,12 +69,18 @@ class ResNet(nn.Module):
         return out
 
     def infer(self, x):
-        out = self.conv(x)
-        out = self.bn(out)
-        out = F.relu(out)
-        out = self.res_blocks(out)
-        out = self.prior_head(out)
-        out = torch.softmax(out, dim=1)
+        with torch.no_grad():
+            out = self.conv(x)
+            out = self.bn(out)
+            out = F.relu(out)
+            out = self.res_blocks(out)
+            out = self.prior_head(out)
+            out = torch.softmax(out, dim=1)
+        return out
+
+    def predict_move(self, x):
+        x = torch.tensor(x, dtype=torch.float32).unsqueeze(0).unsqueeze(0)
+        out = self.infer(x)
         available_moves = x.reshape(1, -1) == 0
         move = int(torch.argmax(torch.softmax(out, dim=1) * available_moves))
         return move
@@ -108,7 +114,7 @@ if __name__ == '__main__':
         [0, 1, 1],
         [0, 0, -1]
     ], dtype=torch.float32).reshape(1, 1, 3, 3)
-    print(net.infer(x))
+    print(net.predict_move(x))
     # out = net(x)
     # print(torch.softmax(out, dim=1))
     # available_moves = x.reshape(1, -1) == 0

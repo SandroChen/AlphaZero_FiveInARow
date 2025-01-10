@@ -13,7 +13,9 @@ from game import Gomoku
 from mcts import Node, mcts
 from models import ResNet
 from torch.utils.tensorboard import SummaryWriter
-from alphazero import selfplay
+
+# 由一个player自我对弈，产生对局，这些棋局用于训练神经网络；
+# 每个iteration都会产生一个新的player，这个player会与best player对弈，如果胜率高于55%，则替换之；
 
 
 if __name__ == '__main__':
@@ -31,17 +33,16 @@ if __name__ == '__main__':
     criterion = torch.nn.CrossEntropyLoss()
     writer = SummaryWriter('runs/move_predictor')
     # 训练参数
-    n_epoch = 100
-    save_epoch = 10
+    n_epoch = 20000
+    save_epoch = 1000
     i_train_step = 0
     i_step = 0
-    batch_size = 64
+    batch_size = 8
     batch_inputs = []
     batch_gt = []
-    for epoch in range(n_epoch):
-    # 初始棋盘状态
-    init_game = Gomoku(np.zeros(board_size, board_size), win_condition=win_condition)
-    collected_data = selfplay(model, init_game, batch_size)
+    # player是一个mct，进行自我对弈，产生对局，用于训练。
+    # 但为了防止每次都选择最佳节点，因而导致只选择一种走法、忽略其他节点，所以黑棋随机走，白棋则选用最佳节点
+    root = Node(white, None, Gomoku(np.zeros((board_size, board_size)), white, win_condition))
     # 统计胜率
     stats = {}
     # 一个epoch走完一整盘棋
