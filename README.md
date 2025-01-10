@@ -1,5 +1,5 @@
-# Five_in_a_row
-HKUST MSDM5002  Final Collaboration Project
+# Info
+This is a project of implementing general AlphaZero which develops from the micro-project about FiveInARow in HKUST Master Course(MSDM5002 Final Collaboration Project).
 
 # Update
 2025.1.6
